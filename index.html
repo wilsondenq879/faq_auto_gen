@@ -2,42 +2,38 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Menu Tree from Excel</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Excel Tree Menu</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <style>
-    ul { list-style-type: none; }
+    ul { list-style-type: none; padding-left: 20px; }
     li { margin: 5px 0; }
-    .menu { font-weight: bold; }
+    .menu-item { font-weight: bold; }
+    .tab-item input[type="checkbox"] { margin-right: 6px; }
   </style>
 </head>
 <body>
-  <h1>Excel 轉樹狀選單</h1>
-  <input type="text" id="fileUrl" placeholder="輸入 Excel 連結 URL 後請按 Enter" style="width: 60%;">
-  <div id="tree"></div>
+  <h2>Excel 樹狀選單選取器</h2>
+  <div id="treeContainer"></div>
   <button onclick="exportSelection()">輸出</button>
   <div id="output"></div>
 
   <script>
-    document.getElementById('fileUrl').addEventListener('keypress', function (e) {
-      if (e.key === 'Enter') {
-        loadExcelFromUrl();
-      }
-    });
+    window.onload = () => {
+      loadExcel();
+    };
 
-    async function loadExcelFromUrl() {
-      const fileUrl = document.getElementById('fileUrl').value;
+    async function loadExcel() {
+      const url = 'menu_tree.xlsx';
       try {
-        const res = await fetch(fileUrl);
+        const res = await fetch(url);
         const arrayBuffer = await res.arrayBuffer();
-        const workbook = XLSX.read(arrayBuffer, { type: 'array' });
-
+        const wb = XLSX.read(arrayBuffer, { type: 'array' });
         const data = [];
 
-        workbook.SheetNames.forEach(sheetName => {
-          const sheet = workbook.Sheets[sheetName];
-          const json = XLSX.utils.sheet_to_json(sheet);
-          json.forEach(row => {
+        wb.SheetNames.forEach(sheet => {
+          const rows = XLSX.utils.sheet_to_json(wb.Sheets[sheet]);
+          rows.forEach(row => {
             if (row['menu name'] && row['tab name']) {
               data.push({
                 menu: row['menu name'],
@@ -51,7 +47,7 @@
 
         renderTree(data);
       } catch (err) {
-        alert('讀取 Excel 檔失敗，請確認網址是否正確');
+        alert('載入 Excel 檔案失敗，請檢查檔案是否存在於相同目錄下');
         console.error(err);
       }
     }
@@ -63,38 +59,49 @@
         tree[item.menu].push(item);
       });
 
-      const container = document.getElementById('tree');
+      const container = document.getElementById('treeContainer');
       container.innerHTML = '';
+
       const ul = document.createElement('ul');
 
-      Object.keys(tree).forEach(menu => {
-        const li = document.createElement('li');
-        li.innerHTML = `<div class='menu'>${menu}</div>`;
-        const subUl = document.createElement('ul');
+      Object.entries(tree).forEach(([menu, tabs]) => {
+        const menuLi = document.createElement('li');
+        menuLi.innerHTML = `<span class="menu-item">${menu}</span>`;
 
-        tree[menu].forEach(item => {
-          const subLi = document.createElement('li');
-          subLi.innerHTML = `<label><input type="checkbox" data-menu="${item.menu}" data-tab="${item.tab}" data-faq="${item.faq}" data-url="${item.url}"/> ${item.tab}</label>`;
-          subUl.appendChild(subLi);
+        const tabUl = document.createElement('ul');
+        tabs.forEach(tab => {
+          const tabLi = document.createElement('li');
+          tabLi.className = 'tab-item';
+          tabLi.innerHTML = `
+            <label>
+              <input type="checkbox"
+                     data-menu="${tab.menu}"
+                     data-tab="${tab.tab}"
+                     data-faq="${tab.faq}"
+                     data-url="${tab.url}" />
+              ${tab.tab}
+            </label>`;
+          tabUl.appendChild(tabLi);
         });
 
-        li.appendChild(subUl);
-        ul.appendChild(li);
+        menuLi.appendChild(tabUl);
+        ul.appendChild(menuLi);
       });
 
       container.appendChild(ul);
     }
 
     function exportSelection() {
-      const checkboxes = document.querySelectorAll('input[type="checkbox"]:checked');
+      const checked = document.querySelectorAll('input[type="checkbox"]:checked');
       const rows = [['Menu Name', 'Tab Name', 'FAQ', 'URL']];
 
-      checkboxes.forEach(cb => {
-        const menu = cb.getAttribute('data-menu');
-        const tab = cb.getAttribute('data-tab');
-        const faq = cb.getAttribute('data-faq');
-        const url = cb.getAttribute('data-url');
-        rows.push([menu, tab, faq, url]);
+      checked.forEach(cb => {
+        rows.push([
+          cb.dataset.menu,
+          cb.dataset.tab,
+          cb.dataset.faq,
+          cb.dataset.url
+        ]);
       });
 
       const table = document.createElement('table');

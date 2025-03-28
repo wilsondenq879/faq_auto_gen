@@ -1,0 +1,109 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Menu Tree from Excel</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <style>
+    ul { list-style-type: none; }
+    li { margin: 5px 0; }
+    .menu { font-weight: bold; }
+  </style>
+</head>
+<body>
+  <h1>Excel 轉樹狀選單</h1>
+  <input type="text" id="fileUrl" placeholder="輸入 Excel 連結 URL" style="width: 60%;">
+  <button onclick="loadExcelFromUrl()">載入</button>
+  <div id="tree"></div>
+  <button onclick="exportSelection()">輸出</button>
+  <div id="output"></div>
+
+  <script>
+    async function loadExcelFromUrl() {
+      const fileUrl = document.getElementById('fileUrl').value;
+      const res = await fetch(fileUrl);
+      const arrayBuffer = await res.arrayBuffer();
+      const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+
+      const data = [];
+
+      workbook.SheetNames.forEach(sheetName => {
+        const sheet = workbook.Sheets[sheetName];
+        const json = XLSX.utils.sheet_to_json(sheet);
+        json.forEach(row => {
+          if (row['menu name'] && row['tab name']) {
+            data.push({
+              menu: row['menu name'],
+              tab: row['tab name'],
+              faq: row['FAQ'] || '',
+              url: row['URL'] || ''
+            });
+          }
+        });
+      });
+
+      renderTree(data);
+    }
+
+    function renderTree(data) {
+      const tree = {};
+      data.forEach(item => {
+        if (!tree[item.menu]) tree[item.menu] = [];
+        tree[item.menu].push(item);
+      });
+
+      const container = document.getElementById('tree');
+      container.innerHTML = '';
+      const ul = document.createElement('ul');
+
+      Object.keys(tree).forEach(menu => {
+        const li = document.createElement('li');
+        li.innerHTML = `<div class='menu'>${menu}</div>`;
+        const subUl = document.createElement('ul');
+
+        tree[menu].forEach(item => {
+          const subLi = document.createElement('li');
+          subLi.innerHTML = `<label><input type="checkbox" data-menu="${item.menu}" data-tab="${item.tab}" data-faq="${item.faq}" data-url="${item.url}"/> ${item.tab}</label>`;
+          subUl.appendChild(subLi);
+        });
+
+        li.appendChild(subUl);
+        ul.appendChild(li);
+      });
+
+      container.appendChild(ul);
+    }
+
+    function exportSelection() {
+      const checkboxes = document.querySelectorAll('input[type="checkbox"]:checked');
+      const rows = [['Menu Name', 'Tab Name', 'FAQ', 'URL']];
+
+      checkboxes.forEach(cb => {
+        const menu = cb.getAttribute('data-menu');
+        const tab = cb.getAttribute('data-tab');
+        const faq = cb.getAttribute('data-faq');
+        const url = cb.getAttribute('data-url');
+        rows.push([menu, tab, faq, url]);
+      });
+
+      const table = document.createElement('table');
+      table.border = '1';
+      rows.forEach(row => {
+        const tr = document.createElement('tr');
+        row.forEach(cell => {
+          const td = document.createElement('td');
+          td.textContent = cell;
+          tr.appendChild(td);
+        });
+        table.appendChild(tr);
+      });
+
+      const output = document.getElementById('output');
+      output.innerHTML = '';
+      output.appendChild(table);
+    }
+  </script>
+</body>
+</html>

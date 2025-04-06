@@ -1,124 +1,117 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Excel Tree Menu</title>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <meta charset="UTF-8">
+  <title>Checkbox Menu Export</title>
   <style>
-    ul { list-style-type: none; padding-left: 20px; }
-    li { margin: 5px 0; }
-    .menu-item { font-weight: bold; }
-    .tab-item input[type="checkbox"] { margin-right: 6px; }
+    ul {
+      list-style-type: none;
+      padding-left: 20px;
+    }
+    .menu-group {
+      margin-bottom: 10px;
+    }
+    .menu-title {
+      cursor: pointer;
+      user-select: none;
+      font-weight: bold;
+    }
+    .hidden {
+      display: none;
+    }
   </style>
 </head>
 <body>
-  <h2>Excel 樹狀選單選取器</h2>
-  <div id="treeContainer"></div>
-  <button onclick="exportSelection()">輸出</button>
-  <div id="output"></div>
+  <h2>Checkbox Menu Export</h2>
+  <div id="menu-container"></div>
+  <button onclick="exportSelected()">Export</button>
 
   <script>
-    window.onload = () => {
-      loadExcel();
-    };
+    const data = [
+      { menu: 'Administration', tab: 'Firmware Upgrade', faq: 'https://www.asus.com/support/faq/1008000/' },
+      { menu: 'Administration', tab: 'Operation Mode', faq: 'https://www.asus.com/support/faq/1015007/' },
+      { menu: 'Administration', tab: 'Restore/Save/Upload Setting', faq: 'https://www.asus.com/support/faq/1001376/' },
+      { menu: 'AiCloud 2.0', tab: 'AiCloud 2.0', faq: 'https://www.asus.com/support/faq/1010005/' },
+      { menu: 'AiMesh', tab: 'AiMesh', faq: 'https://www.asus.com/support/faq/1035087/' },
+      { menu: 'AiProtection', tab: 'Network Protection', faq: 'https://www.asus.com/support/faq/1008719/' },
+      { menu: 'Game Acceleration', tab: 'Game Acceleration', faq: 'https://www.asus.com/support/faq/1053824/' },
+      { menu: 'IPv6', tab: 'IPv6', faq: 'https://www.asus.com/support/faq/113990/' },
+      { menu: 'LAN', tab: 'IPTV', faq: 'https://www.asus.com/support/faq/1011708/' },
+      { menu: 'LAN', tab: 'VLAN', faq: 'https://www.asus.com/support/faq/1049415/' },
+      { menu: 'Parental Controls', tab: 'Web & Apps Filters', faq: 'https://www.asus.com/support/faq/1008720/' },
+      { menu: 'Parental Controls', tab: 'Time Scheduling', faq: 'https://www.asus.com/support/faq/1008720/' },
+      { menu: 'QoS', tab: 'QoS', faq: 'https://www.asus.com/support/faq/1008710/' },
+      { menu: 'System Log', tab: 'General Log', faq: 'https://www.asus.com/support/faq/1008001/' },
+      { menu: 'System Log', tab: 'DHCP Leases', faq: 'https://www.asus.com/support/faq/1008002/' },
+      { menu: 'System Log', tab: 'Wireless Log', faq: 'https://www.asus.com/support/faq/1008003/' },
+      { menu: 'System Log', tab: 'Port Forwarding', faq: 'https://www.asus.com/support/faq/1008004/' },
+      { menu: 'System Log', tab: 'IPv6 Log', faq: 'https://www.asus.com/support/faq/1008005/' },
+      { menu: 'System Log', tab: 'Routing Table', faq: 'https://www.asus.com/support/faq/1008006/' },
+      { menu: 'System Log', tab: 'Port Trigger', faq: 'https://www.asus.com/support/faq/1008007/' },
+      { menu: 'System Log', tab: 'System Event', faq: 'https://www.asus.com/support/faq/1008008/' },
+      { menu: 'Traffic Analyzer', tab: 'Traffic Monitor', faq: 'https://www.asus.com/support/faq/1008713/' },
+      { menu: 'Traffic Analyzer', tab: 'Statistic', faq: 'https://www.asus.com/support/faq/1008714/' },
+      { menu: 'WAN', tab: 'Dual WAN', faq: 'https://www.asus.com/support/faq/1011710/' }
+    ];
 
-    async function loadExcel() {
-      const url = 'menu_tree.xlsx';
-      try {
-        const res = await fetch(url);
-        const arrayBuffer = await res.arrayBuffer();
-        const wb = XLSX.read(arrayBuffer, { type: 'array' });
-        const data = [];
+    const container = document.getElementById('menu-container');
+    const grouped = {};
 
-        wb.SheetNames.forEach(sheet => {
-          const rows = XLSX.utils.sheet_to_json(wb.Sheets[sheet]);
-          rows.forEach(row => {
-            if (row['menu name'] && row['tab name']) {
-              data.push({
-                menu: row['menu name'],
-                tab: row['tab name'],
-                faq: row['FAQ'] || '',
-                url: row['URL'] || ''
-              });
-            }
-          });
-        });
+    data.forEach(item => {
+      if (!grouped[item.menu]) grouped[item.menu] = [];
+      grouped[item.menu].push(item);
+    });
 
-        renderTree(data);
-      } catch (err) {
-        alert('載入 Excel 檔案失敗，請檢查檔案是否存在於相同目錄下');
-        console.error(err);
-      }
-    }
+    for (const menuName in grouped) {
+      const groupDiv = document.createElement('div');
+      groupDiv.className = 'menu-group';
 
-    function renderTree(data) {
-      const tree = {};
-      data.forEach(item => {
-        if (!tree[item.menu]) tree[item.menu] = [];
-        tree[item.menu].push(item);
-      });
-
-      const container = document.getElementById('treeContainer');
-      container.innerHTML = '';
+      const title = document.createElement('div');
+      title.className = 'menu-title';
+      title.textContent = '▶ ' + menuName;
 
       const ul = document.createElement('ul');
+      ul.classList.add('hidden');
 
-      Object.entries(tree).forEach(([menu, tabs]) => {
-        const menuLi = document.createElement('li');
-        menuLi.innerHTML = `<span class="menu-item">${menu}</span>`;
-
-        const tabUl = document.createElement('ul');
-        tabs.forEach(tab => {
-          const tabLi = document.createElement('li');
-          tabLi.className = 'tab-item';
-          tabLi.innerHTML = `
-            <label>
-              <input type="checkbox"
-                     data-menu="${tab.menu}"
-                     data-tab="${tab.tab}"
-                     data-faq="${tab.faq}"
-                     data-url="${tab.url}" />
-              ${tab.tab}
-            </label>`;
-          tabUl.appendChild(tabLi);
-        });
-
-        menuLi.appendChild(tabUl);
-        ul.appendChild(menuLi);
+      title.addEventListener('click', () => {
+        const isHidden = ul.classList.toggle('hidden');
+        title.textContent = (isHidden ? '▶ ' : '▼ ') + menuName;
       });
 
-      container.appendChild(ul);
+      grouped[menuName].forEach(entry => {
+        const li = document.createElement('li');
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.dataset.tab = entry.tab;
+        checkbox.dataset.faq = entry.faq;
+        checkbox.id = entry.menu + '-' + entry.tab;
+
+        const label = document.createElement('label');
+        label.htmlFor = checkbox.id;
+        label.textContent = entry.tab;
+
+        li.appendChild(checkbox);
+        li.appendChild(label);
+        ul.appendChild(li);
+      });
+
+      groupDiv.appendChild(title);
+      groupDiv.appendChild(ul);
+      container.appendChild(groupDiv);
     }
 
-    function exportSelection() {
-      const checked = document.querySelectorAll('input[type="checkbox"]:checked');
-      const rows = [['Menu Name', 'Tab Name', 'FAQ', 'URL']];
-
-      checked.forEach(cb => {
-        rows.push([
-          cb.dataset.menu,
-          cb.dataset.tab,
-          cb.dataset.faq,
-          cb.dataset.url
-        ]);
+    function exportSelected() {
+      const checkboxes = document.querySelectorAll('input[type="checkbox"]:checked');
+      let content = '';
+      checkboxes.forEach(cb => {
+        content += `Tab Name: ${cb.dataset.tab}\nFAQ: ${cb.dataset.faq}\n\n`;
       });
 
-      const table = document.createElement('table');
-      table.border = '1';
-      rows.forEach(row => {
-        const tr = document.createElement('tr');
-        row.forEach(cell => {
-          const td = document.createElement('td');
-          td.textContent = cell;
-          tr.appendChild(td);
-        });
-        table.appendChild(tr);
-      });
-
-      const output = document.getElementById('output');
-      output.innerHTML = '';
-      output.appendChild(table);
+      const blob = new Blob([content], { type: 'text/plain' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = 'selected_tabs.txt';
+      link.click();
     }
   </script>
 </body>

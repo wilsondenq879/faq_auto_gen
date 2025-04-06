@@ -4,29 +4,114 @@
   <meta charset="UTF-8">
   <title>Checkbox Menu Export</title>
   <style>
-    ul {
-      list-style-type: none;
-      padding-left: 20px;
+    :root {
+      --bg-color: #f7f9fc;
+      --text-color: #333;
+      --card-bg: #ffffff;
+      --card-border: #dfe6e9;
+      --card-header-bg: #ecf0f1;
+      --card-header-hover: #dcdde1;
+      --button-bg: #3498db;
+      --button-hover: #2980b9;
+    }
+
+    body.dark-mode {
+      --bg-color: #1e1e2f;
+      --text-color: #f0f0f0;
+      --card-bg: #2c2c3e;
+      --card-border: #444;
+      --card-header-bg: #3c3c4e;
+      --card-header-hover: #50506a;
+      --button-bg: #8e44ad;
+      --button-hover: #732d91;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background-color: var(--bg-color);
+      margin: 40px;
+      color: var(--text-color);
+      transition: background-color 0.3s, color 0.3s;
+    }
+    h2 {
+      color: var(--text-color);
+    }
+    .top-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
     }
     .menu-group {
-      margin-bottom: 10px;
+      margin-bottom: 16px;
+      border: 1px solid var(--card-border);
+      border-radius: 8px;
+      background-color: var(--card-bg);
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+      transition: background-color 0.3s, border-color 0.3s;
     }
     .menu-title {
+      padding: 12px 16px;
       cursor: pointer;
       user-select: none;
+      background-color: var(--card-header-bg);
+      border-top-left-radius: 8px;
+      border-top-right-radius: 8px;
       font-weight: bold;
+      transition: background-color 0.2s;
+    }
+    .menu-title:hover {
+      background-color: var(--card-header-hover);
+    }
+    ul {
+      list-style-type: none;
+      padding: 0 20px 10px;
+      margin: 0;
+    }
+    li {
+      margin: 6px 0;
+    }
+    label {
+      margin-left: 6px;
     }
     .hidden {
       display: none;
     }
+    button {
+      padding: 10px 20px;
+      background-color: var(--button-bg);
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 16px;
+      transition: background-color 0.2s;
+    }
+    button:hover {
+      background-color: var(--button-hover);
+    }
   </style>
 </head>
 <body>
-  <h2>Checkbox Menu Export</h2>
+  <div class="top-bar">
+    <h2>Checkbox Menu Export</h2>
+    <button onclick="toggleTheme()">Toggle Theme</button>
+  </div>
   <div id="menu-container"></div>
   <button onclick="exportSelected()">Export</button>
 
   <script>
+    const savedTheme = localStorage.getItem('theme');
+    if (savedTheme === 'dark') {
+      document.body.classList.add('dark-mode');
+    }
+
+    function toggleTheme() {
+      document.body.classList.toggle('dark-mode');
+      const isDark = document.body.classList.contains('dark-mode');
+      localStorage.setItem('theme', isDark ? 'dark' : 'light');
+    }
+
     const data = [
       { menu: 'Administration', tab: 'Firmware Upgrade', faq: 'https://www.asus.com/support/faq/1008000/' },
       { menu: 'Administration', tab: 'Operation Mode', faq: 'https://www.asus.com/support/faq/1015007/' },

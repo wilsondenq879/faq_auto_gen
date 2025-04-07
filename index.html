@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <title>Checkbox Menu Export</title>
+  <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
   <style>
     :root {
       --bg-color: #f7f9fc;
@@ -93,6 +94,17 @@
     button:hover {
       background-color: var(--button-hover);
     }
+    #loader {
+      margin: 10px 0;
+      font-size: 14px;
+    }
+    input[type="text"], input[type="file"] {
+      padding: 8px;
+      margin: 5px 10px 10px 0;
+    }
+    .select-all {
+      margin-bottom: 10px;
+    }
   </style>
 </head>
 <body>
@@ -100,113 +112,136 @@
     <h2>Checkbox Menu Export</h2>
     <button onclick="toggleTheme()">Toggle Theme</button>
   </div>
+
+  <input type="text" id="excel-url" placeholder="Paste Excel file URL here"
+         value="https://asus-my.sharepoint.com/:x:/p/wilson_deng/ERvHvyOvfPFGjnYEntX2ZxQB_VPHUdtBOUUOmsi3Qd86OQ?e=RVeyhf">
+  <button onclick="loadExcelUrl()">Load Excel (URL)</button>
+
+  <input type="file" id="excel-file" accept=".xlsx,.xls" />
+  <button onclick="loadExcelFile()">Load Excel (Local)</button>
+
+  <div class="select-all">
+    <input type="checkbox" id="select-all" onchange="toggleAllCheckboxes(this)">
+    <label for="select-all">全選 / 取消全選</label>
+  </div>
+
+  <div id="loader"></div>
   <div id="menu-container"></div>
   <button onclick="exportSelected()">Export</button>
 
   <script>
     const savedTheme = localStorage.getItem('theme');
-    if (savedTheme === 'dark') {
-      document.body.classList.add('dark-mode');
-    }
+    if (savedTheme === 'dark') document.body.classList.add('dark-mode');
 
     function toggleTheme() {
       document.body.classList.toggle('dark-mode');
-      const isDark = document.body.classList.contains('dark-mode');
-      localStorage.setItem('theme', isDark ? 'dark' : 'light');
+      localStorage.setItem('theme', document.body.classList.contains('dark-mode') ? 'dark' : 'light');
     }
 
-    const data = [
-      { menu: 'Administration', tab: 'Firmware Upgrade', faq: 'https://www.asus.com/support/faq/1008000/' },
-      { menu: 'Administration', tab: 'Operation Mode', faq: 'https://www.asus.com/support/faq/1015007/' },
-      { menu: 'Administration', tab: 'Restore/Save/Upload Setting', faq: 'https://www.asus.com/support/faq/1001376/' },
-      { menu: 'AiCloud 2.0', tab: 'AiCloud 2.0', faq: 'https://www.asus.com/support/faq/1010005/' },
-      { menu: 'AiMesh', tab: 'AiMesh', faq: 'https://www.asus.com/support/faq/1035087/' },
-      { menu: 'AiProtection', tab: 'Network Protection', faq: 'https://www.asus.com/support/faq/1008719/' },
-      { menu: 'Game Acceleration', tab: 'Game Acceleration', faq: 'https://www.asus.com/support/faq/1053824/' },
-      { menu: 'IPv6', tab: 'IPv6', faq: 'https://www.asus.com/support/faq/113990/' },
-      { menu: 'LAN', tab: 'IPTV', faq: 'https://www.asus.com/support/faq/1011708/' },
-      { menu: 'LAN', tab: 'VLAN', faq: 'https://www.asus.com/support/faq/1049415/' },
-      { menu: 'Parental Controls', tab: 'Web & Apps Filters', faq: 'https://www.asus.com/support/faq/1008720/' },
-      { menu: 'Parental Controls', tab: 'Time Scheduling', faq: 'https://www.asus.com/support/faq/1008720/' },
-      { menu: 'QoS', tab: 'QoS', faq: 'https://www.asus.com/support/faq/1008710/' },
-      { menu: 'System Log', tab: 'General Log', faq: 'https://www.asus.com/support/faq/1008001/' },
-      { menu: 'System Log', tab: 'DHCP Leases', faq: 'https://www.asus.com/support/faq/1008002/' },
-      { menu: 'System Log', tab: 'Wireless Log', faq: 'https://www.asus.com/support/faq/1008003/' },
-      { menu: 'System Log', tab: 'Port Forwarding', faq: 'https://www.asus.com/support/faq/1008004/' },
-      { menu: 'System Log', tab: 'IPv6 Log', faq: 'https://www.asus.com/support/faq/1008005/' },
-      { menu: 'System Log', tab: 'Routing Table', faq: 'https://www.asus.com/support/faq/1008006/' },
-      { menu: 'System Log', tab: 'Port Trigger', faq: 'https://www.asus.com/support/faq/1008007/' },
-      { menu: 'System Log', tab: 'System Event', faq: 'https://www.asus.com/support/faq/1008008/' },
-      { menu: 'Traffic Analyzer', tab: 'Traffic Monitor', faq: 'https://www.asus.com/support/faq/1008713/' },
-      { menu: 'Traffic Analyzer', tab: 'Statistic', faq: 'https://www.asus.com/support/faq/1008714/' },
-      { menu: 'WAN', tab: 'Dual WAN', faq: 'https://www.asus.com/support/faq/1011710/' }
-    ];
+    function toggleAllCheckboxes(source) {
+      const checkboxes = document.querySelectorAll('#menu-container input[type="checkbox"]');
+      checkboxes.forEach(cb => cb.checked = source.checked);
+    }
 
-    const container = document.getElementById('menu-container');
-    const grouped = {};
+    function loadExcelUrl() {
+      const url = document.getElementById('excel-url').value;
+      const loader = document.getElementById('loader');
+      loader.textContent = 'Loading...';
+      fetch(url)
+        .then(res => res.arrayBuffer())
+        .then(buffer => processExcel(buffer))
+        .catch(err => {
+          console.error(err);
+          loader.textContent = 'Failed to load Excel. Check if URL is accessible and supports CORS.';
+        });
+    }
 
-    data.forEach(item => {
-      if (!grouped[item.menu]) grouped[item.menu] = [];
-      grouped[item.menu].push(item);
-    });
+    function loadExcelFile() {
+      const fileInput = document.getElementById('excel-file');
+      if (!fileInput.files.length) return;
+      const reader = new FileReader();
+      reader.onload = e => {
+        const data = e.target.result;
+        processExcel(data);
+      };
+      reader.readAsArrayBuffer(fileInput.files[0]);
+    }
 
-    for (const menuName in grouped) {
-      const groupDiv = document.createElement('div');
-      groupDiv.className = 'menu-group';
+    function processExcel(buffer) {
+      const workbook = XLSX.read(buffer, { type: 'array' });
+      const sheetName = workbook.SheetNames[0];
+      const sheet = workbook.Sheets[sheetName];
+      const json = XLSX.utils.sheet_to_json(sheet);
+      document.getElementById('loader').textContent = '';
+      renderMenu(json);
+    }
 
-      const title = document.createElement('div');
-      title.className = 'menu-title';
-
-      const toggleIcon = document.createElement('span');
-      toggleIcon.textContent = '▶';
-
-      const parentCheckbox = document.createElement('input');
-      parentCheckbox.type = 'checkbox';
-      parentCheckbox.id = 'group-' + menuName;
-
-      const label = document.createElement('label');
-      label.htmlFor = parentCheckbox.id;
-      label.textContent = menuName;
-
-      title.appendChild(toggleIcon);
-      title.appendChild(parentCheckbox);
-      title.appendChild(label);
-
-      const ul = document.createElement('ul');
-      ul.classList.add('hidden');
-
-      title.addEventListener('click', (e) => {
-        if (e.target.tagName !== 'INPUT') {
-          const isHidden = ul.classList.toggle('hidden');
-          toggleIcon.textContent = isHidden ? '▶' : '▼';
-        }
+    function renderMenu(data) {
+      const container = document.getElementById('menu-container');
+      container.innerHTML = '';
+      const grouped = {};
+      data.forEach(item => {
+        if (!grouped[item['Menu Name']]) grouped[item['Menu Name']] = [];
+        grouped[item['Menu Name']].push({ tab: item['Tab Name'], faq: item['FAQ'] });
       });
 
-      parentCheckbox.addEventListener('change', () => {
-        const checkboxes = ul.querySelectorAll('input[type="checkbox"]');
-        checkboxes.forEach(cb => cb.checked = parentCheckbox.checked);
-      });
+      for (const menuName in grouped) {
+        const groupDiv = document.createElement('div');
+        groupDiv.className = 'menu-group';
 
-      grouped[menuName].forEach(entry => {
-        const li = document.createElement('li');
-        const checkbox = document.createElement('input');
-        checkbox.type = 'checkbox';
-        checkbox.dataset.tab = entry.tab;
-        checkbox.dataset.faq = entry.faq;
-        checkbox.id = entry.menu + '-' + entry.tab;
+        const title = document.createElement('div');
+        title.className = 'menu-title';
+        const toggleIcon = document.createElement('span');
+        toggleIcon.textContent = '▶';
+
+        const parentCheckbox = document.createElement('input');
+        parentCheckbox.type = 'checkbox';
+        parentCheckbox.id = 'group-' + menuName;
 
         const label = document.createElement('label');
-        label.htmlFor = checkbox.id;
-        label.textContent = entry.tab;
+        label.htmlFor = parentCheckbox.id;
+        label.textContent = menuName;
 
-        li.appendChild(checkbox);
-        li.appendChild(label);
-        ul.appendChild(li);
-      });
+        title.appendChild(toggleIcon);
+        title.appendChild(parentCheckbox);
+        title.appendChild(label);
 
-      groupDiv.appendChild(title);
-      groupDiv.appendChild(ul);
-      container.appendChild(groupDiv);
+        const ul = document.createElement('ul');
+        ul.classList.add('hidden');
+
+        title.addEventListener('click', (e) => {
+          if (e.target.tagName !== 'INPUT') {
+            const isHidden = ul.classList.toggle('hidden');
+            toggleIcon.textContent = isHidden ? '▶' : '▼';
+          }
+        });
+
+        parentCheckbox.addEventListener('change', () => {
+          const checkboxes = ul.querySelectorAll('input[type="checkbox"]');
+          checkboxes.forEach(cb => cb.checked = parentCheckbox.checked);
+        });
+
+        grouped[menuName].forEach(entry => {
+          const li = document.createElement('li');
+          const checkbox = document.createElement('input');
+          checkbox.type = 'checkbox';
+          checkbox.dataset.tab = entry.tab;
+          checkbox.dataset.faq = entry.faq;
+          checkbox.id = menuName + '-' + entry.tab;
+
+          const label = document.createElement('label');
+          label.htmlFor = checkbox.id;
+          label.textContent = entry.tab;
+
+          li.appendChild(checkbox);
+          li.appendChild(label);
+          ul.appendChild(li);
+        });
+
+        groupDiv.appendChild(title);
+        groupDiv.appendChild(ul);
+        container.appendChild(groupDiv);
+      }
     }
 
     function exportSelected() {
@@ -217,7 +252,6 @@
           content += `Tab Name: ${cb.dataset.tab}\nFAQ: ${cb.dataset.faq}\n\n`;
         }
       });
-
       const blob = new Blob([content], { type: 'text/plain' });
       const link = document.createElement('a');
       link.href = URL.createObjectURL(blob);
